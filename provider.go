@@ -13,10 +13,11 @@ import (
 
 // Provider implements the OpenFeature provider interface for GrowthBook.
 type Provider struct {
-	gbClient   *gb.Client
-	state      openfeature.State
-	stateMutex sync.RWMutex
-	timeout    time.Duration // Timeout for feature loading
+	gbClient       *gb.Client
+	state          openfeature.State
+	stateMutex     sync.RWMutex
+	timeout        time.Duration // Timeout for feature loading
+	usesDataSource bool          // Whether the client uses a built-in data source
 }
 
 // Metadata returns metadata about the provider.
@@ -27,18 +28,39 @@ func (p *Provider) Metadata() openfeature.Metadata {
 }
 
 // NewProvider creates a new instance of the GrowthBook OpenFeature provider.
-// You can specify an optional timeout for feature loading during initialization.
-func NewProvider(gbClient *gb.Client, timeout ...time.Duration) *Provider {
+// You can specify optional parameters:
+//   - timeout: Time to wait for feature loading during initialization (default: 30s)
+//   - usesDataSource: Whether the client uses a built-in data source that requires loading
+func NewProvider(gbClient *gb.Client, options ...interface{}) *Provider {
+	if gbClient == nil {
+		// Log warning that a nil client was provided and a default is being created
+		fmt.Println("Warning: nil GrowthBook client provided, creating default empty client")
+		gbClient, _ = gb.NewClient(context.Background())
+	}
 	// Default timeout is 30 seconds
 	loadTimeout := 30 * time.Second
-	if len(timeout) > 0 && timeout[0] > 0 {
-		loadTimeout = timeout[0]
+	// Default to assuming a data source is used
+	usesDataSource := true
+
+	// Process options
+	for _, option := range options {
+		switch opt := option.(type) {
+		case time.Duration:
+			// If a duration is provided, use it as timeout
+			if opt > 0 {
+				loadTimeout = opt
+			}
+		case bool:
+			// If a bool is provided, use it to set usesDataSource
+			usesDataSource = opt
+		}
 	}
 
 	return &Provider{
-		gbClient: gbClient,
-		state:    openfeature.NotReadyState,
-		timeout:  loadTimeout,
+		gbClient:       gbClient,
+		state:          openfeature.NotReadyState,
+		timeout:        loadTimeout,
+		usesDataSource: usesDataSource,
 	}
 }
 
@@ -61,16 +83,19 @@ func (p *Provider) Init(evalCtx openfeature.EvaluationContext) error {
 		p.gbClient.WithAttributes(gb.Attributes(attrs))
 	}
 
-	// Create a context with a reasonable timeout for loading features
-	ctx, cancel := context.WithTimeout(context.Background(), p.timeout)
-	defer cancel()
+	// Only check for feature loading if a data source is being used
+	if p.usesDataSource {
+		// Create a context with a reasonable timeout for loading features
+		ctx, cancel := context.WithTimeout(context.Background(), p.timeout)
+		defer cancel()
 
-	// If the client has a data source, ensure it's loaded
-	if err := p.gbClient.EnsureLoaded(ctx); err != nil {
-		p.state = openfeature.ErrorState
-		return &openfeature.ProviderInitError{
-			ErrorCode: openfeature.ProviderFatalCode,
-			Message:   fmt.Sprintf("failed to load GrowthBook features: %v", err),
+		// If the client has a data source, ensure it's loaded
+		if err := p.gbClient.EnsureLoaded(ctx); err != nil {
+			p.state = openfeature.ErrorState
+			return &openfeature.ProviderInitError{
+				ErrorCode: openfeature.ProviderFatalCode,
+				Message:   fmt.Sprintf("failed to load GrowthBook features: %v", err),
+			}
 		}
 	}
 
@@ -366,15 +391,14 @@ func (p *Provider) ObjectEvaluation(ctx context.Context, flag string, defaultVal
 // evaluateFlag calls GrowthBook's feature evaluation
 func (p *Provider) evaluateFlag(ctx context.Context, flag string, evalCtx openfeature.FlattenedContext) *gb.FeatureResult {
 	// Set attributes from evalCtx to GrowthBook
-	gbContext := make(map[string]interface{})
+	attr := make(map[string]interface{})
 
 	// Convert evalCtx to GrowthBook attributes
 	for k, v := range evalCtx {
-		gbContext[k] = v
+		attr[k] = v
 	}
 
-	// Update GrowthBook context
-	p.gbClient.WithAttributes(gbContext)
+	p.gbClient.WithAttributes(gb.Attributes(attr))
 
 	// Evaluate the feature in GrowthBook
 	return p.gbClient.EvalFeature(ctx, flag)
