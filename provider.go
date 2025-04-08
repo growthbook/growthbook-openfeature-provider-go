@@ -80,6 +80,7 @@ func (p *Provider) Init(evalCtx openfeature.EvaluationContext) error {
 	// Get attributes from evaluation context
 	attrs := evalCtx.Attributes()
 	if len(attrs) > 0 {
+		//nolint:errcheck
 		p.gbClient.WithAttributes(attrs)
 	}
 
@@ -398,6 +399,7 @@ func (p *Provider) evaluateFlag(ctx context.Context, flag string, evalCtx openfe
 		attr[k] = v
 	}
 
+	//nolint:errcheck
 	p.gbClient.WithAttributes(attr)
 
 	// Evaluate the feature in GrowthBook
