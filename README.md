@@ -68,7 +68,8 @@ func main() {
 You can also initialize the GrowthBook client with in-memory feature flags for testing:
 
 ```go
-gbClient, err := gb.NewClient(context.Background(),
+// Create a client with in-memory features
+gbClient, _ := gb.NewClient(context.Background(),
     gb.WithAttributes(map[string]interface{}{
         "id": "user-123",
     }),
@@ -86,7 +87,22 @@ gbClient, err := gb.NewClient(context.Background(),
         },
     }),
 )
+
+// When using in-memory features without a data source, specify false for usesDataSource
+// This skips waiting for features to be loaded from a remote source
+provider := gbprovider.NewProvider(gbClient, false)
 ```
+
+The `NewProvider` function accepts two optional parameters:
+
+1. `time.Duration`: Timeout for feature loading (default: 30 seconds)
+2. `bool`: Indicates if the client uses a data source (default: true)
+
+When specifying `usesDataSource` as `false`, the provider won't try to wait for features to load, which is useful for:
+
+- Test environments
+- In-memory feature flag usage
+- Avoiding timeouts when no data source is configured
 
 ### Getting Feature Value Details
 
@@ -102,6 +118,15 @@ if err != nil {
     fmt.Printf("Variant: %s\n", valueDetails.Variant)
 }
 ```
+
+### Error Handling
+
+The provider handles various error conditions gracefully:
+
+- **Nil Client**: If a nil GrowthBook client is provided, the provider will enter an error state and return appropriate errors for all operations.
+- **Timeout Errors**: For clients with data sources, the provider will wait up to the specified timeout for features to load.
+- **Type Mismatches**: If a flag exists but has the wrong type, the provider returns the default value and an appropriate error.
+- **Missing Flags**: If a flag doesn't exist, the provider returns the default value and a flag-not-found error.
 
 ## Features
 

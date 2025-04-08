@@ -23,7 +23,7 @@ func main() {
 		gb.WithClientKey("sdk-abc123"), // Replace with your actual client key
 		// Optional: API host (defaults to cdn.growthbook.io)
 		gb.WithApiHost("https://cdn.growthbook.io"),
-		// Choose one of these data sources: 
+		// Choose one of these data sources:
 		gb.WithSseDataSource(), // Server-Sent Events (SSE) for real-time updates
 		// gb.WithPollDataSource(30*time.Second), // Or polling with specified interval
 		gb.WithAttributes(map[string]interface{}{ // Set default attributes
@@ -46,7 +46,8 @@ func main() {
 	log.Println("GrowthBook client features loaded successfully")
 
 	// Create our GrowthBook provider with a 20-second timeout for initialization
-	provider := gbprovider.NewProvider(gbClient, 20*time.Second)
+	// The second parameter (true) explicitly indicates that this client uses a data source
+	provider := gbprovider.NewProvider(gbClient, 20*time.Second, true)
 
 	// Register with OpenFeature
 	log.Println("Registering GrowthBook provider with OpenFeature...")
