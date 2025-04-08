@@ -2,6 +2,7 @@ package growthbook
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -10,25 +11,23 @@ import (
 )
 
 func setupTestProvider() *Provider {
-	// Create a test client with JSON features
+	// Create a test client with JSON features in the correct format
 	featuresJSON := `{
-		"features": {
-			"bool-flag": {
-				"defaultValue": true
-			},
-			"string-flag": {
-				"defaultValue": "default-string"
-			},
-			"number-flag": {
-				"defaultValue": 42.5
-			},
-			"int-flag": {
-				"defaultValue": 42
-			},
-			"object-flag": {
-				"defaultValue": {
-					"key": "value"
-				}
+		"bool-flag": {
+			"defaultValue": true
+		},
+		"string-flag": {
+			"defaultValue": "default-string"
+		},
+		"number-flag": {
+			"defaultValue": 42.5
+		},
+		"int-flag": {
+			"defaultValue": 42
+		},
+		"object-flag": {
+			"defaultValue": {
+				"key": "value"
 			}
 		}
 	}`
@@ -41,7 +40,11 @@ func setupTestProvider() *Provider {
 		gb.WithJsonFeatures(featuresJSON),
 	)
 
-	return NewProvider(gbClient, 5*time.Second)
+	// Create provider with a short timeout and specifying false for usesDataSource
+	// Since we're using in-memory features, we don't need to wait for data source loading
+	provider := NewProvider(gbClient, 5*time.Second, false)
+
+	return provider
 }
 
 func TestProviderInit(t *testing.T) {
@@ -143,5 +146,41 @@ func TestShutdown(t *testing.T) {
 
 	if provider.Status() != openfeature.NotReadyState {
 		t.Errorf("Expected provider status to be not ready after shutdown, got %v", provider.Status())
+	}
+}
+
+// TestEvaluateFlag tests the evaluateFlag method directly
+func TestEvaluateFlag(t *testing.T) {
+	// Create provider with test features
+	provider := setupTestProvider()
+
+	// Initialize the provider
+	evalCtx := openfeature.NewEvaluationContext("test-user", map[string]interface{}{
+		"email": "test@example.com",
+	})
+
+	_ = provider.Init(evalCtx)
+
+	// Create a flattened context
+	flattenedCtx := make(map[string]interface{})
+	for k, v := range evalCtx.Attributes() {
+		flattenedCtx[k] = v
+	}
+
+	// Test the GrowthBook client directly
+	gbClient := provider.GetClient()
+	directResult := gbClient.EvalFeature(context.Background(), "bool-flag")
+	fmt.Printf("DEBUG: Direct GrowthBook evaluation for bool-flag: %+v\n", directResult)
+
+	// Test our evaluateFlag method
+	feature := provider.evaluateFlag(context.Background(), "bool-flag", flattenedCtx)
+	fmt.Printf("DEBUG: evaluateFlag result for bool-flag: %+v\n", feature)
+
+	if feature == nil {
+		t.Error("evaluateFlag returned nil for bool-flag")
+	} else if feature.Value == nil {
+		t.Error("evaluateFlag returned nil value for bool-flag")
+	} else if value, ok := feature.Value.(bool); !ok || !value {
+		t.Errorf("evaluateFlag returned unexpected value for bool-flag: %v (type: %T)", feature.Value, feature.Value)
 	}
 }
