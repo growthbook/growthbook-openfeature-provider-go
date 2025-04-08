@@ -80,7 +80,7 @@ func (p *Provider) Init(evalCtx openfeature.EvaluationContext) error {
 	// Get attributes from evaluation context
 	attrs := evalCtx.Attributes()
 	if len(attrs) > 0 {
-		p.gbClient.WithAttributes(gb.Attributes(attrs))
+		p.gbClient.WithAttributes(attrs)
 	}
 
 	// Only check for feature loading if a data source is being used
@@ -398,7 +398,7 @@ func (p *Provider) evaluateFlag(ctx context.Context, flag string, evalCtx openfe
 		attr[k] = v
 	}
 
-	p.gbClient.WithAttributes(gb.Attributes(attr))
+	p.gbClient.WithAttributes(attr)
 
 	// Evaluate the feature in GrowthBook
 	return p.gbClient.EvalFeature(ctx, flag)
