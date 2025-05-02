@@ -29,7 +29,19 @@ func setupTestProvider() *Provider {
 			"defaultValue": {
 				"key": "value"
 			}
-		}
+		},
+		"rules-test": {
+            "defaultValue": false,
+            "rules": [
+                {
+                    "id": "rule_id",
+                    "condition": {
+                        "email": "user@growthbook.com"
+                    },
+					"force": true
+                }
+            ]
+        }
 	}`
 
 	gbClient, _ := gb.NewClient(
@@ -182,5 +194,44 @@ func TestEvaluateFlag(t *testing.T) {
 		t.Error("evaluateFlag returned nil value for bool-flag")
 	} else if value, ok := feature.Value.(bool); !ok || !value {
 		t.Errorf("evaluateFlag returned unexpected value for bool-flag: %v (type: %T)", feature.Value, feature.Value)
+	}
+}
+
+func TestEvaluateFlagWithRule(t *testing.T) {
+	tests := []struct {
+		name              string
+		evaluationContext openfeature.FlattenedContext
+		expectedResult    bool
+	}{
+		{
+			name:              "no evaluation context",
+			evaluationContext: nil,
+			expectedResult:    false,
+		},
+		{
+			name:              "matching email",
+			evaluationContext: openfeature.FlattenedContext{"email": "user@growthbook.com"},
+			expectedResult:    true,
+		},
+		{
+			name:              "non matching email",
+			evaluationContext: openfeature.FlattenedContext{"email": "foo@bar.com"},
+			expectedResult:    false,
+		},
+	}
+
+	provider := setupTestProvider()
+	_ = provider.Init(openfeature.NewEvaluationContext("test-user", nil))
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			directResult := provider.evaluateFlag(context.Background(), "rules-test", tt.evaluationContext)
+
+			if tt.expectedResult != directResult.On {
+				t.Errorf("evaluateFlag returned %v, expected %v", directResult.On, tt.expectedResult)
+			}
+		})
 	}
 }

@@ -399,11 +399,10 @@ func (p *Provider) evaluateFlag(ctx context.Context, flag string, evalCtx openfe
 		attr[k] = v
 	}
 
-	//nolint:errcheck
-	p.gbClient.WithAttributes(attr)
+	client, _ := p.gbClient.WithAttributes(attr)
 
 	// Evaluate the feature in GrowthBook
-	return p.gbClient.EvalFeature(ctx, flag)
+	return client.EvalFeature(ctx, flag)
 }
 
 // createResolutionDetail creates a ProviderResolutionDetail from a GrowthBook feature result
