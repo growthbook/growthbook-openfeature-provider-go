@@ -31,17 +31,17 @@ func setupTestProvider() *Provider {
 			}
 		},
 		"rules-test": {
-            "defaultValue": false,
-            "rules": [
-                {
-                    "id": "rule_id",
-                    "condition": {
-                        "email": "user@growthbook.com"
-                    },
+			"defaultValue": false,
+			"rules": [
+				{
+					"id": "rule_id",
+					"condition": {
+						"email": "user@growthbook.com"
+					},
 					"force": true
-                }
-            ]
-        }
+				}
+			]
+		}
 	}`
 
 	gbClient, _ := gb.NewClient(
@@ -233,5 +233,19 @@ func TestEvaluateFlagWithRule(t *testing.T) {
 				t.Errorf("evaluateFlag returned %v, expected %v", directResult.On, tt.expectedResult)
 			}
 		})
+	}
+}
+
+func TestEvaluateNonExistingFlag(t *testing.T) {
+	provider := setupTestProvider()
+
+	_ = provider.Init(openfeature.NewEvaluationContext("test-user", nil))
+	result := provider.BooleanEvaluation(context.Background(), "non-existent-flag", false, nil)
+
+	if result.Reason != openfeature.ErrorReason {
+		t.Error("expected error reason for non-existent flag")
+	}
+	if result.ResolutionError.Error() != "FLAG_NOT_FOUND: flag 'non-existent-flag' not found" {
+		t.Error("expected resolution error to be equal to FLAG_NOT_FOUND: flag 'non-existent-flag' not found")
 	}
 }

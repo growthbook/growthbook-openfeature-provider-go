@@ -140,7 +140,7 @@ func (p *Provider) BooleanEvaluation(ctx context.Context, flag string, defaultVa
 	feature := p.evaluateFlag(ctx, flag, evalCtx)
 
 	// Flag not found
-	if feature == nil {
+	if feature == nil || feature.Source == gb.UnknownFeatureResultSource {
 		return openfeature.BoolResolutionDetail{
 			Value: defaultValue,
 			ProviderResolutionDetail: openfeature.ProviderResolutionDetail{
@@ -191,7 +191,7 @@ func (p *Provider) StringEvaluation(ctx context.Context, flag string, defaultVal
 	feature := p.evaluateFlag(ctx, flag, evalCtx)
 
 	// Flag not found
-	if feature == nil {
+	if feature == nil || feature.Source == gb.UnknownFeatureResultSource {
 		return openfeature.StringResolutionDetail{
 			Value: defaultValue,
 			ProviderResolutionDetail: openfeature.ProviderResolutionDetail{
@@ -242,7 +242,7 @@ func (p *Provider) FloatEvaluation(ctx context.Context, flag string, defaultValu
 	feature := p.evaluateFlag(ctx, flag, evalCtx)
 
 	// Flag not found
-	if feature == nil {
+	if feature == nil || feature.Source == gb.UnknownFeatureResultSource {
 		return openfeature.FloatResolutionDetail{
 			Value: defaultValue,
 			ProviderResolutionDetail: openfeature.ProviderResolutionDetail{
@@ -304,7 +304,7 @@ func (p *Provider) IntEvaluation(ctx context.Context, flag string, defaultValue 
 	feature := p.evaluateFlag(ctx, flag, evalCtx)
 
 	// Flag not found
-	if feature == nil {
+	if feature == nil || feature.Source == gb.UnknownFeatureResultSource {
 		return openfeature.IntResolutionDetail{
 			Value: defaultValue,
 			ProviderResolutionDetail: openfeature.ProviderResolutionDetail{
@@ -366,7 +366,7 @@ func (p *Provider) ObjectEvaluation(ctx context.Context, flag string, defaultVal
 	feature := p.evaluateFlag(ctx, flag, evalCtx)
 
 	// Flag not found
-	if feature == nil {
+	if feature == nil || feature.Source == gb.UnknownFeatureResultSource {
 		return openfeature.InterfaceResolutionDetail{
 			Value: defaultValue,
 			ProviderResolutionDetail: openfeature.ProviderResolutionDetail{
